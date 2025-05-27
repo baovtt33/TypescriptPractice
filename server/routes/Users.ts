@@ -13,6 +13,11 @@ type userType = {
   password: string,
 }
 
+type basicInfoType = {
+  id: number,
+  username: string,
+}
+
 router.post("/", async (req: Request, res: Response) => {
   // const { username, password } = req.body;
   const username : string = req.body.username;
@@ -48,6 +53,35 @@ router.post("/login", async (req: Request, res: Response) => {
 
 router.get("/auth", validateToken, (req: AuthenticatedRequest, res: Response) => {
   res.json(req.user);
+});
+
+router.get("/basicinfo/:id", async (req: Request, res: Response) => {
+  const id = req.params.id;
+
+  const basicInfo : basicInfoType = await Users.findByPk(id, {
+    attributes: { exclude: ["password"] },
+  });
+
+  res.json(basicInfo);
+});
+
+router.put("/changepassword", validateToken, async (req: AuthenticatedRequest, res: Response) => {
+  // const { oldPassword, newPassword } = req.body;
+  const oldPassword : string = req.body.oldPassword;
+  const newPassword : string = req.body.newPassword;
+  const user = await Users.findOne({ where: { username: req.user.username } });
+
+  bcrypt.compare(oldPassword, user.password).then(async (match : boolean) => {
+    if (!match) res.json({ error: "Wrong Password Entered!" });
+
+    bcrypt.hash(newPassword, 10).then((hash : string) => {
+      Users.update(
+        { password: hash },
+        { where: { username: req.user.username } }
+      );
+      res.json("SUCCESS");
+    });
+  });
 });
 
 module.exports = router;
